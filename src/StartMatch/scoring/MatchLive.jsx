@@ -32,9 +32,17 @@ const ENDPOINT = process.env.REACT_APP_SOCKET_URL;
 
 const MatchLive = () => {
   const [loader,setLoader] = useState(false)
- 
+  const [extraType,setExtraType] = useState('')
+  const [openModal,setOpenModal] = useState({extra:false,out:false,bowler:false,inning:false,end_match:false})
 
-
+const handleCloseModal = (modalname) => {
+  setOpenModal({...openModal,[modalname]:false})
+  setExtraType("")
+}
+const handleOpenModal = (modalname,extratype) => {
+  setOpenModal({...openModal,[modalname]:true})
+  setExtraType(extratype)
+}
 
   return (
     <Grid container spacing={3}>
@@ -214,28 +222,28 @@ const MatchLive = () => {
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold"
-                // onClick={() => {!loader && handleClickOpen('WD')}}
+                onClick={() => {!loader && handleOpenModal('extra','WD')}}
               >
                 WD
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold"
-                // onClick={() => {!loader && handleClickOpen('NB')}}
+                onClick={() => {!loader && handleOpenModal('extra','NB')}}
               >
                 NB
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold"
-                // onClick={() => {!loader && handleClickOpen('BYE')}}
+                onClick={() => {!loader && handleOpenModal('extra','BYE')}}
               >
                 BYE
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold"
-                // onClick={() => {!loader && handleClickOpen('LB')}}
+                onClick={() => {!loader && handleOpenModal('extra','LB')}}
               >
                 LB
               </TableCell>
@@ -340,15 +348,17 @@ const MatchLive = () => {
 
         {/* all modals  */}
         <ExtraRun
+        openModal={openModal}
+        handleCloseModal={handleCloseModal}
 							/>
         <EndMatch
+        
 							/>
 
         <ChangeInning
 							/>
 					<Out
-          />
-        
+          />        
 					<NewBowler
 					/>
           {/* all modals  */}
