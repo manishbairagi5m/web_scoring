@@ -1,0 +1,57 @@
+export const scoringObj = {
+  match_id: "matchid1",
+  info: {
+    venue: "Indore",
+    dates: "2023-08-09",
+    overs: 4,
+    players: {
+      India: [
+        "Ishan Kishan",
+        "Shubman Gill",
+        "SA Yadav",
+        "Tilak Varma",
+        "SV Samson",
+        "HH Pandya",
+        "AR Patel",
+        "Ravi Bishnoi",
+        "Arshdeep Singh",
+        "YS Chahal",
+        "Mukesh Kumar",
+      ],
+      "West Indies": [
+        "BA King",
+        "KR Mayers",
+        "J Charles",
+        "N Pooran",
+        "R Powell",
+        "SO Hetmyer",
+        "R Shepherd",
+        "JO Holder",
+        "AJ Hosein",
+        "AS Joseph",
+        "OC McCoy",
+      ],
+    },
+    teams: ["India", "West Indies"],
+    toss: {
+      decision: "bat",
+      winner: "India",
+    },
+  },
+  innings: [
+    {
+      team: "India",
+      striker: "Ishan Kishan",
+      non_striker: "Shubman Gill",
+      bowler: "OC McCoy",
+      overs: [],
+    },
+    {
+      team: "West Indies",
+      striker: null,
+      non_striker: null,
+      bowler: null,
+      overs: [],
+    },
+  ],
+};
