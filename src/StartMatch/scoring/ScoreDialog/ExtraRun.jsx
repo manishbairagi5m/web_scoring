@@ -4,7 +4,7 @@ import {Button,TextField,
 // import { bye,leg_bye,no_ball,wide } from "../../../../../../../Assets/images/out_modals"
 
 
-function ExtraRun() {
+function ExtraRun({handleCloseModal,openModal}) {
     let checkBoxStyle= { '& .MuiSvgIcon-root': { fontSize: 18 } ,  color: "#2B344A",
                         '&.Mui-checked': {
                               color: "#2B344A",
@@ -23,13 +23,13 @@ function ExtraRun() {
     
 
     const handleClose = () => {
-        // onClose(false);
+      handleCloseModal("extra");
     };
 
 
     
     return (
-            <Dialog open={false} onClose={handleClose} maxWidth='xs' fullWidth>
+            <Dialog open={openModal.extra} onClose={handleClose} maxWidth='xs' fullWidth>
                 <DialogTitle className="border border-bottom text-center fw-bold">
                     {/* {extraType !== 'OVERTHROW' && obj[extraType] || 'Runs'} */}
                     </DialogTitle>

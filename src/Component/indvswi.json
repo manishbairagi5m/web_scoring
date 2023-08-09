@@ -1,0 +1,97 @@
+{
+  "match_id": "matchid1",
+  "info": {
+    "balls_per_over": 6,
+    "venue": "Providence Stadium, Guyana",
+    "dates": "2023-08-06",
+    "outcome": {
+      "winner": "West Indies",
+      "by": {
+        "wickets": 2
+      }
+    },
+    "overs": 20,
+    "player_of_match": "N Pooran",
+    "players": {
+      "India": [
+        "Ishan Kishan",
+        "Shubman Gill",
+        "SA Yadav",
+        "Tilak Varma",
+        "SV Samson",
+        "HH Pandya",
+        "AR Patel",
+        "Ravi Bishnoi",
+        "Arshdeep Singh",
+        "YS Chahal",
+        "Mukesh Kumar"
+      ],
+      "West Indies": [
+        "BA King",
+        "KR Mayers",
+        "J Charles",
+        "N Pooran",
+        "R Powell",
+        "SO Hetmyer",
+        "R Shepherd",
+        "JO Holder",
+        "AJ Hosein",
+        "AS Joseph",
+        "OC McCoy"
+      ]
+    },
+    "teams": [
+      "India",
+      "West Indies"
+    ],
+    "toss": {
+      "decision": "bat",
+      "winner": "India"
+    }
+  },
+  "innings": [
+    {
+      "team": "India",
+      "striker":"Ishan Kishan",
+      "non_striker":"Shubman Gill",
+      "overs": [
+        {
+          "over": 1,
+          "deliveries": [
+            {
+              "ball" : "0.1",
+              "striker": "Ishan Kishan",
+              "bowler": "AJ Hosein",
+              "non_striker": "Shubman Gill",
+              "extras": {
+                "type": "WD",
+                "run": 1
+              },
+              "runs": 0,
+              "wickets": [
+                {
+                  "player_out": "Shubman Gill",
+                  "fielders": [
+                    {
+                      "name": "SO Hetmyer"
+                    }
+                  ],
+                  "kind": "caught"
+                }
+              ]
+            }
+          ]
+        }
+      
+      ]
+    },
+    {
+      "team": "West Indies",
+      "target": {
+        "overs": 20,
+        "runs": 153
+      },
+      "overs":[]
+    }
+  ]
+}
