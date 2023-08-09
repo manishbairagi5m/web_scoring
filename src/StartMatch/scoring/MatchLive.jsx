@@ -10,30 +10,23 @@ import {
   TableRow,
   Slide,
 } from "@mui/material";
-// import {  india } from "Assets";
-// import { useDispatch, useSelector } from "react-redux";
-// import { runs, overs, innings } from "../../../../../redux/reducers/scoreSlice";
-// import { striker,non_striker,bowler } from "../../../../../redux/reducers/matchSlice";
-// import { updateMatch, wicket, updateRun, addNextBatsman, addNextBowler,undoData  } from "services/admin/scoring";
 import ExtraRun from "./ScoreDialog/ExtraRun";
-// import NewbatsMan from "./ScoreDialog/NewBatsMan";
 import NewBowler from "./ScoreDialog/NewBowler";
 import Out from "./ScoreDialog/Out";
 import EndMatch from "./ScoreDialog/EndMatch";
 import ChangeInning from "./ScoreDialog/ChangeInning";
-// import io from "socket.io-client";
-import { scoreFunctions } from "./scoreFunctions";
-
-const wideNoBallRun = 1
-
-const ENDPOINT = process.env.REACT_APP_SOCKET_URL;
-
+import { getMatchDetailData } from "../../ApiFunctions/scoring";
 
 
 const MatchLive = () => {
   const [loader,setLoader] = useState(false)
   const [extraType,setExtraType] = useState('')
+  const [runningMatchData,setRunningMatchData] = useState(localStorage.getItem("matches_obj"))
+  const [inningWiseData,setInningWiseData] = useState([])
+  const [currentInning,setCurrentInning] = useState({})
+  const [currentInningOvers,setCurrentInningOvers] = useState({})
   const [openModal,setOpenModal] = useState({extra:false,out:false,bowler:false,inning:false,end_match:false})
+  
 
 const handleCloseModal = (modalname) => {
   setOpenModal({...openModal,[modalname]:false})
@@ -43,6 +36,29 @@ const handleOpenModal = (modalname,extratype) => {
   setOpenModal({...openModal,[modalname]:true})
   setExtraType(extratype)
 }
+
+const getCurrentInning = () => {
+  if(inningWiseData && inningWiseData.length > 0){
+    if(inningWiseData[1].overs.length > 0){
+      setCurrentInning(inningWiseData[1])
+    }else{
+      setCurrentInning(inningWiseData[1])
+    }
+  }
+  if(runningMatchData && runningMatchData.innings[1].overs.length > 0){
+    setCurrentInningOvers(runningMatchData.innings[1])
+  }else{
+    setCurrentInningOvers(runningMatchData.innings[0])
+  }
+}
+const getMatchDetailedData = () => {
+  setInningWiseData(getMatchDetailData())
+  getCurrentInning()
+}
+
+useEffect(()=>{
+  getMatchDetailedData()
+},[runningMatchData])
 
   return (
     <Grid container spacing={3}>
@@ -59,7 +75,11 @@ const handleOpenModal = (modalname,extratype) => {
                   objectFit: "cover",
                 }}
               /> */}
-              India 1st Inning
+              {runningMatchData
+              ? runningMatchData.innings[1].overs.length > 0
+              ? `${runningMatchData.innings[1].team} 2nd Inning`
+              : `${runningMatchData.innings[0].team} 1nd Inning`
+              : "error"}
             </div>
             CRR
           </div>
@@ -67,8 +87,8 @@ const handleOpenModal = (modalname,extratype) => {
             className="d-flex justify-content-between fs-5 mt-2"
             // style={fontStyle}
           >
-            <div >0 - 0 (0 Ov)</div>
-            <div >0</div>
+            <div >{currentInning?.run_scored} - {currentInning?.wicket_lost} ({currentInning?.wicket_lost} Ov)</div>
+            <div >{currentInning?.run_rate}</div>
           </div>
         </div>
       </Grid>
@@ -76,6 +96,23 @@ const handleOpenModal = (modalname,extratype) => {
       {/* over box  */}
       <Grid item lg={7} md={6} sm={12} xs={12} >
         <div className="my-card p-3 pb-2 overflow-auto">
+          {currentInningOvers && currentInningOvers.length > 0
+          && currentInningOvers?.overs.map((item)=> {
+            return (
+              <div className="d-flex align-items-center">
+              <span className="me-2">This Over</span>
+              <div className="text-center ms-2 h-100">
+              <div 
+                className="rounded-circle p-1 d-flex justify-content-center align-items-center opacity-0"
+              >
+                {item?.wickets ? "W" : item?.extras?.run ? item.extras.run : item.runs}
+              </div>
+              <div className="opacity-1">{item?.extra?.type && item.extra.type || 0}
+              </div>
+            </div>
+            </div>
+            )
+          })}
           <div className="d-flex align-items-center">
             <span className="me-2">This Over</span>
             <div className="text-center ms-2 h-100">
@@ -121,20 +158,20 @@ const handleOpenModal = (modalname,extratype) => {
           </TableHead>
           <TableBody>
             <TableRow sx={{ "& td": { border: 0 } }}>
-              <TableCell className="ps-3 fw-bold">Rohit Sharma</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInningOvers?.striker && currentInningOvers.striker || "none"}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.striker]?.run_scored || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.striker]?.ball_faced || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.striker]?.fours || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.striker]?.sixes || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.striker]?.strike_rate || 0}</TableCell>
             </TableRow>
             <TableRow >
-            <TableCell className="ps-3 fw-bold">Shubhman Gill</TableCell>
-            <TableCell className="ps-3 fw-bold">0</TableCell>
-            <TableCell className="ps-3 fw-bold">0</TableCell>
-            <TableCell className="ps-3 fw-bold">0</TableCell>
-            <TableCell className="ps-3 fw-bold">0</TableCell>
-            <TableCell className="ps-3 fw-bold">0</TableCell>
+            <TableCell className="ps-3 fw-bold">{currentInningOvers?.non_striker && currentInningOvers.non_striker || "none"}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.non_striker]?.run_scored || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.non_striker]?.ball_faced || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.non_striker]?.fours || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.non_striker]?.sixes || 0}</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInning?.batsman && currentInning?.batsman[currentInningOvers?.non_striker]?.strike_rate || 0}</TableCell>
             </TableRow>
           
           </TableBody>
@@ -174,12 +211,12 @@ const handleOpenModal = (modalname,extratype) => {
           </TableHead>
           <TableBody>
             <TableRow>
-              <TableCell className="ps-3 fw-bold">Mitchel Starc</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
-              <TableCell className="ps-3 fw-bold">0</TableCell>
+              <TableCell className="ps-3 fw-bold">{currentInningOvers?.bowler && currentInningOvers.bowler || 'none'}</TableCell>
+            <TableCell className="ps-3 fw-bold">{currentInning?.bowler && currentInning.bowler[currentInningOvers?.bowler]?.over_bowled || 0}</TableCell>
+            <TableCell className="ps-3 fw-bold">{0}</TableCell>
+            <TableCell className="ps-3 fw-bold">{currentInning?.bowler && currentInning.bowler[currentInningOvers?.bowler]?.run_conceeded || 0}</TableCell>
+            <TableCell className="ps-3 fw-bold">{currentInning?.bowler && currentInning.bowler[currentInningOvers?.bowler]?.wicket || 0}</TableCell>
+            <TableCell className="ps-3 fw-bold">{currentInning?.bowler && currentInning.bowler[currentInningOvers?.bowler]?.economy || 0}</TableCell>
             </TableRow>
           </TableBody>
         </Table>

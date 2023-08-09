@@ -68,8 +68,7 @@
                 "run": 1
               },
               "runs": 0,
-              "wickets": [
-                {
+              "wickets": {
                   "player_out": "Shubman Gill",
                   "fielders": [
                     {
@@ -77,8 +76,7 @@
                     }
                   ],
                   "kind": "caught"
-                }
-              ]
+              }
             }
           ]
         }
