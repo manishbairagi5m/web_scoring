@@ -15,18 +15,29 @@ import NewBowler from "./ScoreDialog/NewBowler";
 import Out from "./ScoreDialog/Out";
 import EndMatch from "./ScoreDialog/EndMatch";
 import ChangeInning from "./ScoreDialog/ChangeInning";
-import { getMatchDetailData } from "../../ApiFunctions/scoring";
+import { getMatchDetailData,addRunApi } from "../../ApiFunctions/scoring";
 
 
 const MatchLive = () => {
   const [loader,setLoader] = useState(false)
   const [extraType,setExtraType] = useState('')
-  const [runningMatchData,setRunningMatchData] = useState(localStorage.getItem("matches_obj"))
+  const [runningMatchData,setRunningMatchData] = useState(JSON.parse(localStorage.getItem("matches_obj")))
   const [inningWiseData,setInningWiseData] = useState([])
   const [currentInning,setCurrentInning] = useState({})
   const [currentInningOvers,setCurrentInningOvers] = useState({})
   const [openModal,setOpenModal] = useState({extra:false,out:false,bowler:false,inning:false,end_match:false})
   
+  const fontStyle1 = {
+    width: "50px",
+    height: "50px",
+  };
+  const color = {
+    0: { backgroundColor: "#EDEDED", color: "black" },
+    4: { backgroundColor: "#6A6C70", color: "white" },
+    6: { backgroundColor: "#265AF5", color: "white" },
+    OUT: { backgroundColor: "#A00D00", color: "white" },
+    default: { backgroundColor: "#DADADA", color: "black" },
+  };
 
 const handleCloseModal = (modalname) => {
   setOpenModal({...openModal,[modalname]:false})
@@ -37,28 +48,55 @@ const handleOpenModal = (modalname,extratype) => {
   setExtraType(extratype)
 }
 
-const getCurrentInning = () => {
-  if(inningWiseData && inningWiseData.length > 0){
-    if(inningWiseData[1].overs.length > 0){
-      setCurrentInning(inningWiseData[1])
-    }else{
-      setCurrentInning(inningWiseData[1])
-    }
+const increaseBall = (ball) => {
+ let newball = String(Number(ball).toFixed(1)).split(".")
+ if(Number(newball[1]) === 6){
+  newball[0] = Number(newball[0]) + 1
+  newball[1] = 1
+ }else{
+  newball[1] = Number(newball[1]) +  1
+ }
+ return newball.join(".")
+}
+
+const handleAddRun = (run) => {
+  let del = {
+    ball: increaseBall(currentInning?.overPlayed && currentInning.overPlayed || 0),
+    striker:currentInningOvers?.striker,
+    non_striker:currentInningOvers?.non_striker,
+    bowler:currentInningOvers?.bowler,
+    runs : run,
   }
+  let matchdata = addRunApi(currentInningOvers?.team,del)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const getCurrentInning = (matchdata) => {
   if(runningMatchData && runningMatchData.innings[1].overs.length > 0){
+    setCurrentInning(matchdata[1])
     setCurrentInningOvers(runningMatchData.innings[1])
   }else{
+    setCurrentInning(matchdata[0])
     setCurrentInningOvers(runningMatchData.innings[0])
   }
 }
+
 const getMatchDetailedData = () => {
-  setInningWiseData(getMatchDetailData())
-  getCurrentInning()
+  let matchdata = getMatchDetailData()
+  setInningWiseData(matchdata)
+  getCurrentInning(matchdata)
 }
 
 useEffect(()=>{
   getMatchDetailedData()
-},[runningMatchData])
+},[])
+
+// console.log(inningWiseData,'inningWiseData')
+console.log(currentInning,'currentInning')
+// console.log(currentInningOvers,'currentInningOvers')
+console.log(runningMatchData,'runningMatchData')
+
 
   return (
     <Grid container spacing={3}>
@@ -78,7 +116,7 @@ useEffect(()=>{
               {runningMatchData
               ? runningMatchData.innings[1].overs.length > 0
               ? `${runningMatchData.innings[1].team} 2nd Inning`
-              : `${runningMatchData.innings[0].team} 1nd Inning`
+              : `${runningMatchData.innings[0].team} 1st Inning`
               : "error"}
             </div>
             CRR
@@ -87,7 +125,7 @@ useEffect(()=>{
             className="d-flex justify-content-between fs-5 mt-2"
             // style={fontStyle}
           >
-            <div >{currentInning?.run_scored} - {currentInning?.wicket_lost} ({currentInning?.wicket_lost} Ov)</div>
+            <div >{currentInning?.run_scored || 0} - {currentInning?.wicket_lost || 0} ({currentInning?.overPlayed} Ov)</div>
             <div >{currentInning?.run_rate}</div>
           </div>
         </div>
@@ -96,34 +134,41 @@ useEffect(()=>{
       {/* over box  */}
       <Grid item lg={7} md={6} sm={12} xs={12} >
         <div className="my-card p-3 pb-2 overflow-auto">
-          {currentInningOvers && currentInningOvers.length > 0
-          && currentInningOvers?.overs.map((item)=> {
+        <div className="d-flex align-items-center">
+            <span className="me-2">This Over</span>
+          {currentInningOvers && currentInningOvers?.overs?.length > 0
+          && currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries.map((item,index)=> {
+            let keyitem = item?.wicket ? color["OUT"] : color[item.runs] ? color[item.runs] : color["default"];
             return (
-              <div className="d-flex align-items-center">
-              <span className="me-2">This Over</span>
-              <div className="text-center ms-2 h-100">
-              <div 
-                className="rounded-circle p-1 d-flex justify-content-center align-items-center opacity-0"
+              <div className="text-center ms-2 h-100 d-flex flex-column align-items-center" key={index}>
+              <div
+                className="rounded-circle p-1 d-flex justify-content-center align-items-center"
+                style={{ ...fontStyle1, ...keyitem }}
               >
-                {item?.wickets ? "W" : item?.extras?.run ? item.extras.run : item.runs}
+                {item?.wicket
+                ? ((item?.runs > 0 && "W "+item.runs) || (item?.extras?.run && "W "+item?.extras?.run) || "W")
+                : item?.extras?.run 
+                ? item.extras?.run
+                : item.runs
+              }
               </div>
-              <div className="opacity-1">{item?.extra?.type && item.extra.type || 0}
+              <div style={{ opacity: (item?.extras?.type ?  1 : 0) }} className="fs-6">
+                {item?.extra?.type ? item.extras.type : "-"}
               </div>
-            </div>
             </div>
             )
-          })}
-          <div className="d-flex align-items-center">
-            <span className="me-2">This Over</span>
+          })
+          ||
             <div className="text-center ms-2 h-100">
             <div 
             // style={{ ...fontStyle1 }}
               className="rounded-circle p-1 d-flex justify-content-center align-items-center opacity-0"
-            >0
+              >0
             </div>
             <div className="opacity-0">0
             </div>
-          </div>
+            </div>
+          }
           </div>
         </div>
       </Grid>
@@ -322,35 +367,35 @@ useEffect(()=>{
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(0)}
+                onClick={() => !loader && handleAddRun(0)}
               >
                 0
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(1)}
+                onClick={() => !loader && handleAddRun(1)}
               >
                 1
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(2)}
+                onClick={() => !loader && handleAddRun(2)}
               >
                 2
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(3)}
+                onClick={() => !loader && handleAddRun(3)}
               >
                 3
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(4)}
+                onClick={() => !loader && handleAddRun(4)}
               >
                 4
               </TableCell>
@@ -364,7 +409,7 @@ useEffect(()=>{
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(6)}
+                onClick={() => !loader && handleAddRun(6)}
               >
                 6
               </TableCell>

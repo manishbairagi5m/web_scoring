@@ -1,5 +1,5 @@
 
-export const matchObj = localStorage.getItem("matches_obj")
+export const matchObj = JSON.parse(localStorage.getItem("matches_obj"))
 export const extraTypeEnum = ['WD','NB','BYE','LB']
 
 export const getStriker = (delivery,lastBall=false) => {
@@ -10,12 +10,12 @@ export const getStriker = (delivery,lastBall=false) => {
     if(lastBall){
         if(evens.includes(totalRun)){
             obj.striker = delivery.non_striker
-            obj.non_striker = delivery._striker
+            obj.non_striker = delivery.striker
         }
     }else{
         if(odds.includes(totalRun)){
             obj.striker = delivery.non_striker
-            obj.non_striker = delivery._striker
+            obj.non_striker = delivery.striker
         }
     }
     return obj
@@ -23,10 +23,10 @@ export const getStriker = (delivery,lastBall=false) => {
 
 export const addRunApi = (teamname,delivery_obj) => {
     let matchObjCopy = matchObj
+    let ball = String(Number(delivery_obj.ball).toFixed(1)).split(".")
     let inning_obj = matchObjCopy.innings[0].team === teamname ? matchObjCopy.innings[0] : matchObjCopy.innings[1]
     if(inning_obj.overs.length > 0){
-        let last_delivery = inning_obj.overs[inning_obj.overs.length -1].deliveries[inning_obj.overs[inning_obj.overs.length -1].deliveries]
-        if(ball === "0.6" && (!last_delivery.extras.type || ["BYE","LB"].includes(last_delivery.extras.type))){
+        if(Number(ball[1]) === 1 && (!delivery_obj?.extras?.type || ["BYE","LB"].includes(delivery_obj?.extras?.type))){
             inning_obj.overs.push({over:inning_obj.overs.length,deliveries:[{...delivery_obj}]})
             inning_obj = {...inning_obj,...getStriker(delivery_obj,true)}
         }else{
@@ -42,7 +42,8 @@ export const addRunApi = (teamname,delivery_obj) => {
     }else{
         matchObjCopy.innings[1] = {...inning_obj}
     }
-    localStorage.setItem("matches_obj",matchObjCopy)
+    localStorage.setItem("matches_obj",JSON.stringify(matchObjCopy))
+    return matchObjCopy
 }
 
 export const getMatchDetailData = () => {
@@ -66,7 +67,9 @@ export const getInningDetailedData = (matchdata,team) => {
         wicket_lost : 0,
         overPlayed : 0,
         run_rate : 0,
-        batsman : {},
+        batsman : {
+            [inning_obj.striker]:{ run_scored : 0,ball_faced : 0,fours : 0,sixes : 0,strike_rate : 0},
+            [inning_obj.non_striker]:{ run_scored : 0,ball_faced : 0,fours : 0,sixes : 0,strike_rate : 0}},
         bowler : {},
         didNotBat : [],
         extras : {WD:0,NB:0,BYE:0,LB:0},
@@ -78,8 +81,8 @@ export const getInningDetailedData = (matchdata,team) => {
         newinning.overPlayed = last_delivery.ball
         for(let i=0;i<inning_obj.overs.length;i++){
             for(let j=0;j<inning_obj.overs[i].deliveries.length;j++){
-                let del = inning_obj.overs[i].deliveries
-                let totalDelRun = Number(del.run) + (del?.extras?.run && Number(del.extras.run) || 0)
+                let del = inning_obj.overs[i].deliveries[j]
+                let totalDelRun = Number(del.runs) + (del?.extras?.run && Number(del.extras.run) || 0)
                 if(del?.extras && del.extras.type === 'LB' && del.extras.type === 'BYE'){
                     newinning.run_scored += Number(totalDelRun)
                     newinning.extras[del.extras.type] += Number(del.extras.run)
@@ -90,10 +93,9 @@ export const getInningDetailedData = (matchdata,team) => {
                     newinning.run_scored += Number(totalDelRun)
                 }
                 newinning.wicket_lost += (del?.wickets && 1 || 0)
-                newinning.run_rate = (newinning.run_scored / getBallFromOver(newinning.overPlayed)) * 6
-                newinning.batsman = {...newinning.batsman,...getBatsmanData(newinning.batsman[del.striker])}
-                newinning.batsman = {...newinning.batsman,...getBatsmanData(newinning.batsman[del.non_striker])}
-                newinning.bowler = {...newinning.bowler,...getBowlerData(newinning.bowler[del.bowler],del)}
+                newinning.run_rate = ((newinning.run_scored / getBallFromOver(newinning.overPlayed)) * 6).toFixed(2)
+                newinning.batsman = {...newinning.batsman,[del.striker]:{...getBatsmanData(newinning.batsman[del.striker],del)}}
+                newinning.bowler = {...newinning.bowler,[del.bowler]:{...getBowlerData(newinning.bowler[del.bowler],del)}}
             }
         }
     }
@@ -101,47 +103,49 @@ export const getInningDetailedData = (matchdata,team) => {
 }
 
 export const getBowlerData = (bowlername,del) => {
+    let run_conceeded = (del?.extras?.type && (del.extras.type !== 'BYE' || del.extras.type !== 'LB')) && del.runs || (del.runs+(del?.extras?.run || 0))
     if(bowlername){
         bowlername = {
-            run_conceeded : (del?.extras?.type && (del.extras.type !== 'BYE' || del.extras.type !== 'LB')) 
-                            && (Number(bowlername.run_conceeded)+Number(del.runs)) || (Number(bowlername.run_conceeded)+Number(del.runs)+Number(del.extras.run)),
+            run_conceeded : run_conceeded + Number(bowlername.run_conceeded),
             over_bowled : del.ball,
             wicket : (del?.wicket && (del.wicket.kind !== 'run_out' || del.wicket.kind !== 'retired' || del.wicket.kind !== 'run_out_mankand')) 
                     && (Number(bowlername.wicket)+1) || (Number(bowlername.wicket)+0),
-            economy : (del.runs / (bowlername.run_conceeded>0 ? getBallFromOver(bowlername.over_bowled) : 1)) * 6
+            economy : ((run_conceeded + Number(bowlername.run_conceeded) / (bowlername.over_bowled>0 ? getBallFromOver(bowlername.over_bowled) : 1)) * 6).toFixed(2)
         }
     }else{
         bowlername = {
-            run_conceeded : (del?.extras?.type && (del.extras.type !== 'BYE' || del.extras.type !== 'LB')) && del.runs || (del.runs+del.extras.run),
+            run_conceeded : run_conceeded,
             over_bowled : del.ball,
             wicket : (del?.wicket && (del.wicket.kind !== 'run_out' || del.wicket.kind !== 'retired' || del.wicket.kind !== 'run_out_mankand')) && 1 || 0,
-            economy : (del.runs / (bowlername.run_conceeded>0 ? getBallFromOver(bowlername.over_bowled) : 1)) * 6
+            economy : (del.runs / (Number(getBallFromOver(del.ball)) > 0 && getBallFromOver(del.ball) || 1)) * 6
         }
     }
-    return batsmanname
+    return bowlername
 }
-export const getBatsmanData = (batsmanname) => {
-    if(batsmanname){
+export const getBatsmanData = (batsmanname,del) => {
+        let ball_faced = (del?.extras?.type !== 'WD' || del?.extras?.type !== 'NB') && 0 || 1
+        if(batsmanname){
+            batsmanname = {
+                run_scored : batsmanname.run_scored + del.runs,
+                ball_faced : batsmanname.ball_faced + ball_faced,
+                fours : batsmanname.fours + (del.runs === 4 ? 1 : 0),
+                sixes : batsmanname.sixes + (del.runs === 6 ? 1 : 0),
+                strike_rate : (((batsmanname.run_scored + del.runs) / (batsmanname.ball_faced+ball_faced>0 ? batsmanname.ball_faced+ball_faced : 1)) * 100).toFixed(2)
+            }
+        }else{
         batsmanname = {
-            run_scored : batsman.run_scored + del.runs,
-            ball_faced : batsman.ball_faced + ((del?.extras?.type !== 'WD' || del?.extras?.type !== 'NB') && 0 || 1),
-            fours : batsman.fours + (del.runs === 4 ? 1 : 0),
-            sixes : batsman.sixes + (del.runs === 6 ? 1 : 0),
-            strike_rate : (del.runs / (batsmanname.ball_faced>0 ? batsmanname.ball_faced : 1)) * 100
-        }
-    }else{
-        batsmanname = {
-            run_scored : del.runs,
-            ball_faced : (del?.extras?.type !== 'WD' || del?.extras?.type !== 'NB') && 0 || 1,
+            run_scored : del?.runs,
+            ball_faced : ball_faced,
             fours : del.runs === 4 ? 1 : 0,
             sixes : del.runs === 6 ? 1 : 0,
-            strike_rate : (del.runs / (batsmanname.ball_faced>0 ? batsmanname.ball_faced : 1)) * 100
+            strike_rate : (batsmanname.run_scored / (ball_faced && ball_faced>0 && ball_faced && 1)) * 100
         }
     }
+ 
     return batsmanname
 }
 
 const getBallFromOver = (ov) => {
-    let over = (ov.toFixed(1)).split(".")
+    let over = String(Number(ov).toFixed(1)).split(".")
     return ((Number(over[0]) * 6) + Number(over[1]))
 }

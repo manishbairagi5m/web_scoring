@@ -7,7 +7,7 @@ const MatchesList = () => {
   const navigate = useNavigate()
 
   const handleNewMatch = () => {
-    localStorage.setItem("matches_obj",scoringObj)
+    localStorage.setItem("matches_obj",JSON.stringify(scoringObj))
     navigate('/live')
   }
   return (
