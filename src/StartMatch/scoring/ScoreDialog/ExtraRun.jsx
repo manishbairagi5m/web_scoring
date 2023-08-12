@@ -4,7 +4,9 @@ import {Button,TextField,
 // import { bye,leg_bye,no_ball,wide } from "../../../../../../../Assets/images/out_modals"
 
 
-function ExtraRun({handleCloseModal,openModal}) {
+function ExtraRun({handleCloseModal,openModal,extraType,handleAddRun}) {
+    const [state,setState] = useState(0)
+
     let checkBoxStyle= { '& .MuiSvgIcon-root': { fontSize: 18 } ,  color: "#2B344A",
                         '&.Mui-checked': {
                               color: "#2B344A",
@@ -26,11 +28,22 @@ function ExtraRun({handleCloseModal,openModal}) {
       handleCloseModal("extra");
     };
 
+    const handleSubmit = () => {
+      if(extraType === 'NB' || extraType === 'NBLB' || extraType === 'NBBYE'){
+        handleAddRun(Number(state),{type:extraType,run:0})
+      }else{
+        handleAddRun(0,{type:extraType,run:Number(state)})
+      }
+      setState(0)
+      handleCloseModal("extra");
+    }
+
 
     
     return (
             <Dialog open={openModal.extra} onClose={handleClose} maxWidth='xs' fullWidth>
                 <DialogTitle className="border border-bottom text-center fw-bold">
+                  {extraType && obj[extraType]}
                     {/* {extraType !== 'OVERTHROW' && obj[extraType] || 'Runs'} */}
                     </DialogTitle>
                 <DialogContent>
@@ -44,7 +57,7 @@ function ExtraRun({handleCloseModal,openModal}) {
                         // value={state}
                         type="number"
                         variant="outlined"
-                        // onChange={(e) => handleChange(e)}
+                        onChange={(e) => setState(e.target.value)}
                         // error={error}
                         // helperText={error && "Please Add Penalty Runs"}
                     />
@@ -72,8 +85,9 @@ function ExtraRun({handleCloseModal,openModal}) {
                     <div className="w-100 d-flex">
                         <Button
                         size="large"
-                        // onClick={() => handleClose()}
-                        className="w-100 rounded-0 text-dark bglightgrey fw-bold"
+                        onClick={() => handleClose()}
+                        className="w-100 rounded-0 text-dark fw-bold"
+                        style={{backgroundColor: "#dadada"}}
                         sx={{
                             ":hover": {
                             bgcolor: "#DADADA",
@@ -85,8 +99,9 @@ function ExtraRun({handleCloseModal,openModal}) {
                         </Button>
                         <Button
                         size="large"
-                        className="w-100 rounded-0 text-white mainbgadmin fw-bold"
-                        // onClick={() => handleSubmit()}
+                        className="w-100 rounded-0 text-white fw-bold"
+                        onClick={() => handleSubmit()}
+                        style={{backgroundColor: "#222b42"}}
                         sx={{
                             ":hover": {
                             bgcolor: "#222B42",

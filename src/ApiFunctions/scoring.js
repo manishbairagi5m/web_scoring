@@ -28,14 +28,14 @@ export const addRunApi = (teamname,delivery_obj) => {
     if(inning_obj.overs.length > 0){
         if(Number(ball[1]) === 1 && (!delivery_obj?.extras?.type || ["BYE","LB"].includes(delivery_obj?.extras?.type))){
             inning_obj.overs.push({over:inning_obj.overs.length,deliveries:[{...delivery_obj}]})
-            inning_obj = {...inning_obj,...getStriker(delivery_obj,true)}
+            inning_obj = {...inning_obj,...getStriker(delivery_obj,true),bowler:delivery_obj.bowler}
         }else{
             inning_obj.overs[inning_obj.overs.length -1].deliveries.push(delivery_obj)
-            inning_obj = {...inning_obj,...getStriker(delivery_obj)}
+            inning_obj = {...inning_obj,...getStriker(delivery_obj),bowler:delivery_obj.bowler}
         }
     }else{
         inning_obj.overs.push({over:inning_obj.overs.length,deliveries:[{...delivery_obj}]})
-        inning_obj = {...inning_obj,...getStriker(delivery_obj)}
+        inning_obj = {...inning_obj,...getStriker(delivery_obj),bowler:delivery_obj.bowler}
     }
     if(matchObjCopy.innings[0].team === teamname){
         matchObjCopy.innings[0] = {...inning_obj}
@@ -104,20 +104,24 @@ export const getInningDetailedData = (matchdata,team) => {
 
 export const getBowlerData = (bowlername,del) => {
     let run_conceeded = (del?.extras?.type && (del.extras.type !== 'BYE' || del.extras.type !== 'LB')) && del.runs || (del.runs+(del?.extras?.run || 0))
+    let over_bowled = bowlername?.over_bowled 
+                    ? getApproxOvers(bowlername.over_bowled).split(".")[0] +"."+ String(Number(del.ball).toFixed(1)).split(".")[1] 
+                    : (!del?.extras?.type || (del.extras.type === 'BYE' || del.extras.type === 'LB')) && "0.1" || "0"
+    
     if(bowlername){
         bowlername = {
             run_conceeded : run_conceeded + Number(bowlername.run_conceeded),
-            over_bowled : del.ball,
+            over_bowled : over_bowled,
             wicket : (del?.wicket && (del.wicket.kind !== 'run_out' || del.wicket.kind !== 'retired' || del.wicket.kind !== 'run_out_mankand')) 
                     && (Number(bowlername.wicket)+1) || (Number(bowlername.wicket)+0),
-            economy : ((run_conceeded + Number(bowlername.run_conceeded) / (bowlername.over_bowled>0 ? getBallFromOver(bowlername.over_bowled) : 1)) * 6).toFixed(2)
+            economy : (((run_conceeded + Number(bowlername.run_conceeded)) / (getBallFromOver(over_bowled))) * 6).toFixed(2)
         }
     }else{
         bowlername = {
             run_conceeded : run_conceeded,
-            over_bowled : del.ball,
+            over_bowled : over_bowled,
             wicket : (del?.wicket && (del.wicket.kind !== 'run_out' || del.wicket.kind !== 'retired' || del.wicket.kind !== 'run_out_mankand')) && 1 || 0,
-            economy : (del.runs / (Number(getBallFromOver(del.ball)) > 0 && getBallFromOver(del.ball) || 1)) * 6
+            economy : (run_conceeded / (Number(getBallFromOver(over_bowled)) > 0 && getBallFromOver(over_bowled) || 1)) * 6
         }
     }
     return bowlername
@@ -149,3 +153,11 @@ const getBallFromOver = (ov) => {
     let over = String(Number(ov).toFixed(1)).split(".")
     return ((Number(over[0]) * 6) + Number(over[1]))
 }
+
+const getApproxOvers = (overs) => {
+    return (
+      (String(overs).split(".")[1] === "6" &&
+        String(Number(String(overs).split(".")[0]) + 1)) ||
+      overs
+    );
+  }

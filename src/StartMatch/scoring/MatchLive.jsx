@@ -25,7 +25,7 @@ const MatchLive = () => {
   const [inningWiseData,setInningWiseData] = useState([])
   const [currentInning,setCurrentInning] = useState({})
   const [currentInningOvers,setCurrentInningOvers] = useState({})
-  const [openModal,setOpenModal] = useState({extra:false,out:false,bowler:false,inning:false,end_match:false})
+  const [openModal,setOpenModal] = useState({extra:false,wicket:false,bowler:false,inning:false,end_match:false})
   
   const fontStyle1 = {
     width: "50px",
@@ -43,30 +43,42 @@ const handleCloseModal = (modalname) => {
   setOpenModal({...openModal,[modalname]:false})
   setExtraType("")
 }
-const handleOpenModal = (modalname,extratype) => {
+const handleOpenModal = (modalname,extratype=null) => {
   setOpenModal({...openModal,[modalname]:true})
   setExtraType(extratype)
 }
 
-const increaseBall = (ball) => {
- let newball = String(Number(ball).toFixed(1)).split(".")
- if(Number(newball[1]) === 6){
+const increaseBall = (ball,extra=null) => {
+  let newball = String(Number(ball).toFixed(1)).split(".")
+ if(Number(newball[1]) === 6 && (!extra || extra.type === 'BYE' || extra.type === 'LB')){
   newball[0] = Number(newball[0]) + 1
   newball[1] = 1
+ }else if(extra && (extra.type === 'WD' || extra.type === 'NB' || extra.type === 'NBBYE' || extra.type === 'NBLB')){ 
+  newball[1] = Number(newball[1])
  }else{
   newball[1] = Number(newball[1]) +  1
  }
  return newball.join(".")
 }
 
-const handleAddRun = (run) => {
+const handleAddRun = (run,extras) => {
   let del = {
-    ball: increaseBall(currentInning?.overPlayed && currentInning.overPlayed || 0),
+    ball: increaseBall((currentInning?.overPlayed && currentInning.overPlayed || 0),extras),
     striker:currentInningOvers?.striker,
     non_striker:currentInningOvers?.non_striker,
     bowler:currentInningOvers?.bowler,
-    runs : run,
+    runs : extras && extras.run > 0 && 0 || run,
   }
+  del = extras ? {...del,extras} : del
+  let lastDelivery = currentInningOvers.overs.length > 0 
+  && currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries[currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries.length-1]
+  if(Number(del.ball.split(".")[1]) === 6 || (lastDelivery.bowler === currentInningOvers.bowler && Number(del.ball.split(".")[1]) === 1)){
+    handleOpenModal('bowler')
+    if(Number(del.ball.split(".")[1]) === 1){
+      return false
+    }
+  }
+
   let matchdata = addRunApi(currentInningOvers?.team,del)
   getMatchDetailedData()
   setRunningMatchData(matchdata)
@@ -92,9 +104,14 @@ useEffect(()=>{
   getMatchDetailedData()
 },[])
 
+const swapBatsman = () => {
+  setCurrentInning({...currentInning,['striker']:currentInning.non_striker,['non_striker']:currentInning.striker})
+  setCurrentInningOvers({...currentInningOvers,['striker']:currentInningOvers.non_striker,['non_striker']:currentInningOvers.striker})
+}
+
 // console.log(inningWiseData,'inningWiseData')
 console.log(currentInning,'currentInning')
-// console.log(currentInningOvers,'currentInningOvers')
+console.log(currentInningOvers,'currentInningOvers')
 console.log(runningMatchData,'runningMatchData')
 
 
@@ -153,7 +170,7 @@ console.log(runningMatchData,'runningMatchData')
               }
               </div>
               <div style={{ opacity: (item?.extras?.type ?  1 : 0) }} className="fs-6">
-                {item?.extra?.type ? item.extras.type : "-"}
+                {item?.extras?.type ? item.extras.type : "-"}
               </div>
             </div>
             )
@@ -234,7 +251,7 @@ console.log(runningMatchData,'runningMatchData')
               <TableCell className="text-primary fw-bold w-50 ps-3">
                 <div className="d-flex align-items-center">Bowler
                 <span style={{ backgroundColor: "#D9D9D978",color: "rgba(52, 49, 76, 1)",padding:"2px 10px"}} 
-                className="ms-4 cursor-pointer rounded" 
+                className="ms-4 cursor-pointer rounded" onClick={()=>handleOpenModal('bowler')}
                 >Change</span></div>
               </TableCell>
               <TableCell align="center" className="text-primary fw-bold">
@@ -347,7 +364,7 @@ console.log(runningMatchData,'runningMatchData')
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold"
-                // onClick={() => {!loader && swapBatsman()}}
+                onClick={() => {!loader && swapBatsman()}}
               >
                 SWAP <br /> BATSMAN
               </TableCell>
@@ -432,6 +449,8 @@ console.log(runningMatchData,'runningMatchData')
         <ExtraRun
         openModal={openModal}
         handleCloseModal={handleCloseModal}
+        extraType={extraType}
+        handleAddRun={handleAddRun}
 							/>
         <EndMatch
         
@@ -440,8 +459,19 @@ console.log(runningMatchData,'runningMatchData')
         <ChangeInning
 							/>
 					<Out
+           openModal={openModal}
+           handleCloseModal={handleCloseModal}
+           runningMatchData={runningMatchData}
+           currentInningOvers={currentInningOvers}
           />        
 					<NewBowler
+           openModal={openModal}
+           handleCloseModal={handleCloseModal}
+           runningMatchData={runningMatchData}
+           currentInningOvers={currentInningOvers}
+           setCurrentInning={setCurrentInning}
+           setCurrentInningOvers={setCurrentInningOvers}
+           currentInning={currentInning}
 					/>
           {/* all modals  */}
       </Grid>

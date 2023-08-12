@@ -8,8 +8,10 @@ import {
 
 
 
-function Out() {
+function Out({openModal,handleCloseModal}) {
     const [outModal, setOutModal] = useState(false)
+    const [outType, setOutType] = useState("BOLD")
+    const [outHelping, setOutHelping] = useState("")
     const [validate, setValidate] = useState({helper:false,new_batsman:false,out_batsman:false})
     const fontStyle = { fontFamily: "Poppins-Bold" };
     let checkBoxStyle= { '& .MuiSvgIcon-root': { fontSize: 18 } ,  color: "#2B344A",
@@ -32,39 +34,57 @@ function Out() {
     {value: "OBSTR(THE_FILED)" ,    label: "Obstr. Field", image: 'obstr_field' },
   ];
 
-    const handleClose = () => {
-        // onClose(false);
-    };
 
- 
-
+    
+    
     const handleCancel = () => {
+        handleCloseModal("wicket");
     }
 
 
     return ( <>
 {/* select wicket and type  */}
-        <Dialog open={outModal} onClose={() => handleCancel()} maxWidth='xs' fullWidth>
+        <Dialog open={openModal.wicket} onClose={() => handleCancel()} maxWidth='xs' fullWidth>
         <DialogTitle className="border border-bottom text-center fw-bold">
-            {/* {outLabel} */}
+            {outType}
             </DialogTitle>
             <DialogContent className='p-5 pt-3'>
                 <Grid container spacing={1}>
 
-                  {/* select who helped  */}
                   
+                  {/* select out type  */}
+                    <Grid item xs={12}>
+                        <FormControl fullWidth >
+                            <InputLabel >Out Type</InputLabel>
+                         <Select
+                                    label="Out Type"
+                                    value={outType}
+                                    onChange={(e) => setOutType(e.target.value)}
+                                >
+                                    {
+                                        outArr.map(item => 
+                                        <MenuItem key={item.value} value={item.label}>{item.label}</MenuItem>)
+                                    }
+                                </Select>
+                        </FormControl>
+                        
+                    </Grid>
+
                     <Grid item xs={12}>
                         <FormControl fullWidth >
                             <InputLabel >Who Helped</InputLabel>
                          <Select
                                     label="Who Helped"
-                                    // value={bowling.players}
-                                    // onChange={(e) => setOutHelping(e.target.value)}
+                                    value={outHelping}
+                                    onChange={(e) => setOutHelping(e.target.value)}
                                 >
-                                    {/* {
-                                        bowling.players.map(item => 
-                                        <MenuItem key={item._id} disabled={item.players_id === matchState.bowler.players_id} value={item}>{item.players_name}</MenuItem>)
-                                    } */}
+                                    {
+                                        currentInningOvers?.team && runningMatchData.info &&
+                                        runningMatchData.info.players[(currentInningOvers.team === runningMatchData.info.teams[0]) 
+                                        ? runningMatchData.info.teams[1]
+                                        : runningMatchData.info.teams[0]].map(item => 
+                                        <MenuItem key={item} value={item}>{item}</MenuItem>)
+                                    }
                                     <MenuItem value="">Helped</MenuItem>
                                 </Select>
                             {/* } */}
