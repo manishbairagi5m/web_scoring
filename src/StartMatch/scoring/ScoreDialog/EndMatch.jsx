@@ -4,17 +4,20 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import { getForceOutCome } from "../../../ApiFunctions/scoring";
 
-function EndMatch() {
+function EndMatch({openModal,handleCloseModal,runningMatchData,handleMatchEnd}) {
  
   const handleClose = () => {
-    // onClose();
+    handleCloseModal('end_match')
   };
 
-
+  const handleSubmit = () => {
+    handleMatchEnd()
+  }
 
   return (
-    <Dialog open={false} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog open={openModal.end_match} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle className="border border-bottom text-center fw-bold">
         End Match
       </DialogTitle>
@@ -24,15 +27,9 @@ function EndMatch() {
             <div className="w-100">
             <div className="p-2 text-center">Are You Sure You Want to End Match ?</div>
             <div className="p-2 text-success text-center">
-              {/* {scoreFunctions.getOutCome1(runningMatchData)} */}
+              {getForceOutCome(runningMatchData)}
             </div>
             <div className="p-2 text-center">
-              {/* <img
-                src={winner_image}
-                alt="img"
-                className="w-100 h-100"
-                style={{ objectFit: "contain" }}
-              /> */}
             </div>
           </div>
         </div>
@@ -40,9 +37,10 @@ function EndMatch() {
       <DialogActions className="m-0 p-0">
         <div className="w-100 d-flex">
           <Button
-            // onClick={() => handleClose()}
+            onClick={() => handleClose()}
             size="large"
             className="w-100 rounded-0 text-dark bglightgrey fw-bold"
+            style={{backgroundColor: "#dadada"}}
             sx={{
               ":hover": {
                 bgcolor: "#DADADA",
@@ -55,13 +53,14 @@ function EndMatch() {
           <Button
             size="large"
             className="w-100 rounded-0 text-white mainbgadmin fw-bold"
+            style={{backgroundColor: "#222b42"}}
             sx={{
               ":hover": {
                 bgcolor: "#222B42",
                 color: "white",
               },
             }}
-            // onClick={() => endMatch()}
+            onClick={() => handleSubmit()}
           >
             Confirm
           </Button>

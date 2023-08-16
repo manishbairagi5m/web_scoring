@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from "react";
 import {
   Grid,
-  Button,
-  Box,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  Slide,
 } from "@mui/material";
 import ExtraRun from "./ScoreDialog/ExtraRun";
 import NewBowler from "./ScoreDialog/NewBowler";
 import Out from "./ScoreDialog/Out";
 import EndMatch from "./ScoreDialog/EndMatch";
 import ChangeInning from "./ScoreDialog/ChangeInning";
-import { getMatchDetailData,addRunApi } from "../../ApiFunctions/scoring";
+import { getMatchDetailData,addRunApi, changeInning, getOutCome, endMatch,undoInning } from "../../ApiFunctions/scoring";
 
 
 const MatchLive = () => {
@@ -61,7 +58,7 @@ const increaseBall = (ball,extra=null) => {
  return newball.join(".")
 }
 
-const handleAddRun = (run,extras) => {
+const handleAddRun = (run,extras=null,wicket=null,new_batsman=null) => {
   let del = {
     ball: increaseBall((currentInning?.overPlayed && currentInning.overPlayed || 0),extras),
     striker:currentInningOvers?.striker,
@@ -70,6 +67,7 @@ const handleAddRun = (run,extras) => {
     runs : extras && extras.run > 0 && 0 || run,
   }
   del = extras ? {...del,extras} : del
+  del = wicket ? {...del,wicket} : del
   let lastDelivery = currentInningOvers.overs.length > 0 
   && currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries[currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries.length-1]
   if(Number(del.ball.split(".")[1]) === 6 || (lastDelivery.bowler === currentInningOvers.bowler && Number(del.ball.split(".")[1]) === 1)){
@@ -79,13 +77,35 @@ const handleAddRun = (run,extras) => {
     }
   }
 
-  let matchdata = addRunApi(currentInningOvers?.team,del)
+  let matchdata = addRunApi(currentInningOvers?.team,del,new_batsman)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const handleChangeInning = () => {
+  let striker = runningMatchData.info.players[runningMatchData.innings[1].team][0]
+  let non_striker = runningMatchData.info.players[runningMatchData.innings[1].team][1]
+  let bowler = runningMatchData.info.players[runningMatchData.innings[0].team][0]
+  let matchdata = changeInning(striker,non_striker,bowler)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const handleMatchEnd = () => {
+  let matchdata = endMatch(runningMatchData)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const handleUndo = () => {
+  let matchdata = undoInning(runningMatchData,currentInningOvers.team)
+  console.log(matchdata,'matchdata undo')
   getMatchDetailedData()
   setRunningMatchData(matchdata)
 }
 
 const getCurrentInning = (matchdata) => {
-  if(runningMatchData && runningMatchData.innings[1].overs.length > 0){
+  if(runningMatchData && (runningMatchData.innings[1].overs.length > 0 || runningMatchData.innings[1].striker)){
     setCurrentInning(matchdata[1])
     setCurrentInningOvers(runningMatchData.innings[1])
   }else{
@@ -95,7 +115,7 @@ const getCurrentInning = (matchdata) => {
 }
 
 const getMatchDetailedData = () => {
-  let matchdata = getMatchDetailData()
+  let matchdata = getMatchDetailData(runningMatchData)
   setInningWiseData(matchdata)
   getCurrentInning(matchdata)
 }
@@ -117,21 +137,15 @@ console.log(runningMatchData,'runningMatchData')
 
   return (
     <Grid container spacing={3}>
+      <Grid item lg={12} md={6} sm={12} xs={12}>
+        {getOutCome(runningMatchData)}
+        </Grid>
       <Grid item lg={5} md={6} sm={12} xs={12}>
         <div className="my-card p-3">
           <div className="d-flex justify-content-between">
             <div>
-              {/* <img
-                src={imagePath && (imagePath+battingTeamLogo) || india}
-                className="me-2 rounded-circle"
-                style={{
-                  width: 30,
-                  height: 30,
-                  objectFit: "cover",
-                }}
-              /> */}
               {runningMatchData
-              ? runningMatchData.innings[1].overs.length > 0
+              ? (runningMatchData.innings[1].overs.length > 0 || runningMatchData.innings[1].striker)
               ? `${runningMatchData.innings[1].team} 2nd Inning`
               : `${runningMatchData.innings[0].team} 1st Inning`
               : "error"}
@@ -349,7 +363,7 @@ console.log(runningMatchData,'runningMatchData')
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold text-danger"
-                // onClick={() => {checkIsInningCompleted(runningMatchData,true) || handleOutOpen()}}
+                onClick={() => {!loader && handleOpenModal('wicket')}}
               >
                 OUT
               </TableCell>
@@ -358,6 +372,7 @@ console.log(runningMatchData,'runningMatchData')
                 className="tableButtonHover p-4 border fw-bold text-success"
                 // style={{opacity:`${undoEnable && checkUndoPossible() ? "1" : "0.5"}`}}
                 // onClick={() => {!loader && undoEnable && checkUndoPossible() && undo()}}
+                onClick={() => handleUndo()}
               >
                 UNDO
               </TableCell>
@@ -376,6 +391,7 @@ console.log(runningMatchData,'runningMatchData')
                   // checkIsInningCompleted(runningMatchData,true)  
                 //   if(!scoreFunctions.checkInningsNumber(runningMatchData,batting)){setOpenChangeInningDialog(true)}
                 // }}
+                onClick={() => {!loader && handleOpenModal('inning')}}
               >
                 CHANGE <br /> INNING
               </TableCell>
@@ -438,6 +454,7 @@ console.log(runningMatchData,'runningMatchData')
                   // checkIsInningCompleted(runningMatchData,true)
                 //   if(scoreFunctions.checkInningsNumber(runningMatchData,batting)){setOpenEndMatchDialog(true)}
                 // }}
+                onClick={() => {!loader && handleOpenModal('end_match')}}
               >
                 END <br /> MATCH
               </TableCell>
@@ -453,16 +470,27 @@ console.log(runningMatchData,'runningMatchData')
         handleAddRun={handleAddRun}
 							/>
         <EndMatch
-        
+        openModal={openModal}
+        handleCloseModal={handleCloseModal}
+        runningMatchData={runningMatchData}
+        handleMatchEnd={handleMatchEnd}
 							/>
 
         <ChangeInning
+         openModal={openModal}
+         handleCloseModal={handleCloseModal}
+         currentInningOvers={currentInningOvers}
+         currentInning={currentInning}
+         runningMatchData={runningMatchData}
+         handleChangeInning={handleChangeInning}
 							/>
 					<Out
            openModal={openModal}
            handleCloseModal={handleCloseModal}
            runningMatchData={runningMatchData}
            currentInningOvers={currentInningOvers}
+           currentInning={currentInning}
+           handleAddRun={handleAddRun}
           />        
 					<NewBowler
            openModal={openModal}
