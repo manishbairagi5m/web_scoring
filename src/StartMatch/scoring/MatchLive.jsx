@@ -1,84 +1,153 @@
 import React, { useEffect, useState } from "react";
 import {
   Grid,
-  Button,
-  Box,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  Slide,
 } from "@mui/material";
 import ExtraRun from "./ScoreDialog/ExtraRun";
 import NewBowler from "./ScoreDialog/NewBowler";
 import Out from "./ScoreDialog/Out";
 import EndMatch from "./ScoreDialog/EndMatch";
 import ChangeInning from "./ScoreDialog/ChangeInning";
-import { getMatchDetailData } from "../../ApiFunctions/scoring";
+import { getMatchDetailData,addRunApi, changeInning, getOutCome, endMatch,undoInning } from "../../ApiFunctions/scoring";
 
 
 const MatchLive = () => {
   const [loader,setLoader] = useState(false)
   const [extraType,setExtraType] = useState('')
-  const [runningMatchData,setRunningMatchData] = useState(localStorage.getItem("matches_obj"))
+  const [runningMatchData,setRunningMatchData] = useState(JSON.parse(localStorage.getItem("matches_obj")))
   const [inningWiseData,setInningWiseData] = useState([])
   const [currentInning,setCurrentInning] = useState({})
   const [currentInningOvers,setCurrentInningOvers] = useState({})
-  const [openModal,setOpenModal] = useState({extra:false,out:false,bowler:false,inning:false,end_match:false})
+  const [openModal,setOpenModal] = useState({extra:false,wicket:false,bowler:false,inning:false,end_match:false})
   
+  const fontStyle1 = {
+    width: "50px",
+    height: "50px",
+  };
+  const color = {
+    0: { backgroundColor: "#EDEDED", color: "black" },
+    4: { backgroundColor: "#6A6C70", color: "white" },
+    6: { backgroundColor: "#265AF5", color: "white" },
+    OUT: { backgroundColor: "#A00D00", color: "white" },
+    default: { backgroundColor: "#DADADA", color: "black" },
+  };
 
 const handleCloseModal = (modalname) => {
   setOpenModal({...openModal,[modalname]:false})
   setExtraType("")
 }
-const handleOpenModal = (modalname,extratype) => {
+const handleOpenModal = (modalname,extratype=null) => {
   setOpenModal({...openModal,[modalname]:true})
   setExtraType(extratype)
 }
 
-const getCurrentInning = () => {
-  if(inningWiseData && inningWiseData.length > 0){
-    if(inningWiseData[1].overs.length > 0){
-      setCurrentInning(inningWiseData[1])
-    }else{
-      setCurrentInning(inningWiseData[1])
+const increaseBall = (ball,extra=null) => {
+  let newball = String(Number(ball).toFixed(1)).split(".")
+ if(Number(newball[1]) === 6 && (!extra || extra.type === 'BYE' || extra.type === 'LB')){
+  newball[0] = Number(newball[0]) + 1
+  newball[1] = 1
+ }else if(extra && (extra.type === 'WD' || extra.type === 'NB' || extra.type === 'NBBYE' || extra.type === 'NBLB')){ 
+  newball[1] = Number(newball[1])
+ }else{
+  newball[1] = Number(newball[1]) +  1
+ }
+ return newball.join(".")
+}
+
+const handleAddRun = (run,extras=null,wicket=null,new_batsman=null) => {
+  let del = {
+    ball: increaseBall((currentInning?.overPlayed && currentInning.overPlayed || 0),extras),
+    striker:currentInningOvers?.striker,
+    non_striker:currentInningOvers?.non_striker,
+    bowler:currentInningOvers?.bowler,
+    runs : extras && extras.run > 0 && 0 || run,
+  }
+  del = extras ? {...del,extras} : del
+  del = wicket ? {...del,wicket} : del
+  let lastDelivery = currentInningOvers.overs.length > 0 
+  && currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries[currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries.length-1]
+  if(Number(del.ball.split(".")[1]) === 6 || (lastDelivery.bowler === currentInningOvers.bowler && Number(del.ball.split(".")[1]) === 1)){
+    handleOpenModal('bowler')
+    if(Number(del.ball.split(".")[1]) === 1){
+      return false
     }
   }
-  if(runningMatchData && runningMatchData.innings[1].overs.length > 0){
+
+  let matchdata = addRunApi(currentInningOvers?.team,del,new_batsman)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const handleChangeInning = () => {
+  let striker = runningMatchData.info.players[runningMatchData.innings[1].team][0]
+  let non_striker = runningMatchData.info.players[runningMatchData.innings[1].team][1]
+  let bowler = runningMatchData.info.players[runningMatchData.innings[0].team][0]
+  let matchdata = changeInning(striker,non_striker,bowler)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const handleMatchEnd = () => {
+  let matchdata = endMatch(runningMatchData)
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const handleUndo = () => {
+  let matchdata = undoInning(runningMatchData,currentInningOvers.team)
+  console.log(matchdata,'matchdata undo')
+  getMatchDetailedData()
+  setRunningMatchData(matchdata)
+}
+
+const getCurrentInning = (matchdata) => {
+  if(runningMatchData && (runningMatchData.innings[1].overs.length > 0 || runningMatchData.innings[1].striker)){
+    setCurrentInning(matchdata[1])
     setCurrentInningOvers(runningMatchData.innings[1])
   }else{
+    setCurrentInning(matchdata[0])
     setCurrentInningOvers(runningMatchData.innings[0])
   }
 }
+
 const getMatchDetailedData = () => {
-  setInningWiseData(getMatchDetailData())
-  getCurrentInning()
+  let matchdata = getMatchDetailData(runningMatchData)
+  setInningWiseData(matchdata)
+  getCurrentInning(matchdata)
 }
 
 useEffect(()=>{
   getMatchDetailedData()
-},[runningMatchData])
+},[])
+
+const swapBatsman = () => {
+  setCurrentInning({...currentInning,['striker']:currentInning.non_striker,['non_striker']:currentInning.striker})
+  setCurrentInningOvers({...currentInningOvers,['striker']:currentInningOvers.non_striker,['non_striker']:currentInningOvers.striker})
+}
+
+// console.log(inningWiseData,'inningWiseData')
+console.log(currentInning,'currentInning')
+console.log(currentInningOvers,'currentInningOvers')
+console.log(runningMatchData,'runningMatchData')
+
 
   return (
     <Grid container spacing={3}>
+      <Grid item lg={12} md={6} sm={12} xs={12}>
+        {getOutCome(runningMatchData)}
+        </Grid>
       <Grid item lg={5} md={6} sm={12} xs={12}>
         <div className="my-card p-3">
           <div className="d-flex justify-content-between">
             <div>
-              {/* <img
-                src={imagePath && (imagePath+battingTeamLogo) || india}
-                className="me-2 rounded-circle"
-                style={{
-                  width: 30,
-                  height: 30,
-                  objectFit: "cover",
-                }}
-              /> */}
               {runningMatchData
-              ? runningMatchData.innings[1].overs.length > 0
+              ? (runningMatchData.innings[1].overs.length > 0 || runningMatchData.innings[1].striker)
               ? `${runningMatchData.innings[1].team} 2nd Inning`
-              : `${runningMatchData.innings[0].team} 1nd Inning`
+              : `${runningMatchData.innings[0].team} 1st Inning`
               : "error"}
             </div>
             CRR
@@ -87,7 +156,7 @@ useEffect(()=>{
             className="d-flex justify-content-between fs-5 mt-2"
             // style={fontStyle}
           >
-            <div >{currentInning?.run_scored} - {currentInning?.wicket_lost} ({currentInning?.wicket_lost} Ov)</div>
+            <div >{currentInning?.run_scored || 0} - {currentInning?.wicket_lost || 0} ({currentInning?.overPlayed} Ov)</div>
             <div >{currentInning?.run_rate}</div>
           </div>
         </div>
@@ -96,34 +165,41 @@ useEffect(()=>{
       {/* over box  */}
       <Grid item lg={7} md={6} sm={12} xs={12} >
         <div className="my-card p-3 pb-2 overflow-auto">
-          {currentInningOvers && currentInningOvers.length > 0
-          && currentInningOvers?.overs.map((item)=> {
+        <div className="d-flex align-items-center">
+            <span className="me-2">This Over</span>
+          {currentInningOvers && currentInningOvers?.overs?.length > 0
+          && currentInningOvers.overs[currentInningOvers.overs.length-1].deliveries.map((item,index)=> {
+            let keyitem = item?.wicket ? color["OUT"] : color[item.runs] ? color[item.runs] : color["default"];
             return (
-              <div className="d-flex align-items-center">
-              <span className="me-2">This Over</span>
-              <div className="text-center ms-2 h-100">
-              <div 
-                className="rounded-circle p-1 d-flex justify-content-center align-items-center opacity-0"
+              <div className="text-center ms-2 h-100 d-flex flex-column align-items-center" key={index}>
+              <div
+                className="rounded-circle p-1 d-flex justify-content-center align-items-center"
+                style={{ ...fontStyle1, ...keyitem }}
               >
-                {item?.wickets ? "W" : item?.extras?.run ? item.extras.run : item.runs}
+                {item?.wicket
+                ? ((item?.runs > 0 && "W "+item.runs) || (item?.extras?.run && "W "+item?.extras?.run) || "W")
+                : item?.extras?.run 
+                ? item.extras?.run
+                : item.runs
+              }
               </div>
-              <div className="opacity-1">{item?.extra?.type && item.extra.type || 0}
+              <div style={{ opacity: (item?.extras?.type ?  1 : 0) }} className="fs-6">
+                {item?.extras?.type ? item.extras.type : "-"}
               </div>
-            </div>
             </div>
             )
-          })}
-          <div className="d-flex align-items-center">
-            <span className="me-2">This Over</span>
+          })
+          ||
             <div className="text-center ms-2 h-100">
             <div 
             // style={{ ...fontStyle1 }}
               className="rounded-circle p-1 d-flex justify-content-center align-items-center opacity-0"
-            >0
+              >0
             </div>
             <div className="opacity-0">0
             </div>
-          </div>
+            </div>
+          }
           </div>
         </div>
       </Grid>
@@ -189,7 +265,7 @@ useEffect(()=>{
               <TableCell className="text-primary fw-bold w-50 ps-3">
                 <div className="d-flex align-items-center">Bowler
                 <span style={{ backgroundColor: "#D9D9D978",color: "rgba(52, 49, 76, 1)",padding:"2px 10px"}} 
-                className="ms-4 cursor-pointer rounded" 
+                className="ms-4 cursor-pointer rounded" onClick={()=>handleOpenModal('bowler')}
                 >Change</span></div>
               </TableCell>
               <TableCell align="center" className="text-primary fw-bold">
@@ -287,7 +363,7 @@ useEffect(()=>{
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold text-danger"
-                // onClick={() => {checkIsInningCompleted(runningMatchData,true) || handleOutOpen()}}
+                onClick={() => {!loader && handleOpenModal('wicket')}}
               >
                 OUT
               </TableCell>
@@ -296,13 +372,14 @@ useEffect(()=>{
                 className="tableButtonHover p-4 border fw-bold text-success"
                 // style={{opacity:`${undoEnable && checkUndoPossible() ? "1" : "0.5"}`}}
                 // onClick={() => {!loader && undoEnable && checkUndoPossible() && undo()}}
+                onClick={() => handleUndo()}
               >
                 UNDO
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 border fw-bold"
-                // onClick={() => {!loader && swapBatsman()}}
+                onClick={() => {!loader && swapBatsman()}}
               >
                 SWAP <br /> BATSMAN
               </TableCell>
@@ -314,6 +391,7 @@ useEffect(()=>{
                   // checkIsInningCompleted(runningMatchData,true)  
                 //   if(!scoreFunctions.checkInningsNumber(runningMatchData,batting)){setOpenChangeInningDialog(true)}
                 // }}
+                onClick={() => {!loader && handleOpenModal('inning')}}
               >
                 CHANGE <br /> INNING
               </TableCell>
@@ -322,35 +400,35 @@ useEffect(()=>{
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(0)}
+                onClick={() => !loader && handleAddRun(0)}
               >
                 0
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(1)}
+                onClick={() => !loader && handleAddRun(1)}
               >
                 1
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(2)}
+                onClick={() => !loader && handleAddRun(2)}
               >
                 2
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(3)}
+                onClick={() => !loader && handleAddRun(3)}
               >
                 3
               </TableCell>
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(4)}
+                onClick={() => !loader && handleAddRun(4)}
               >
                 4
               </TableCell>
@@ -364,7 +442,7 @@ useEffect(()=>{
               <TableCell
                 align="center"
                 className="tableButtonHover p-4 fs-5 border fw-bold"
-                // onClick={() => !loader && handleAddRun(6)}
+                onClick={() => !loader && handleAddRun(6)}
               >
                 6
               </TableCell>
@@ -376,6 +454,7 @@ useEffect(()=>{
                   // checkIsInningCompleted(runningMatchData,true)
                 //   if(scoreFunctions.checkInningsNumber(runningMatchData,batting)){setOpenEndMatchDialog(true)}
                 // }}
+                onClick={() => {!loader && handleOpenModal('end_match')}}
               >
                 END <br /> MATCH
               </TableCell>
@@ -387,16 +466,40 @@ useEffect(()=>{
         <ExtraRun
         openModal={openModal}
         handleCloseModal={handleCloseModal}
+        extraType={extraType}
+        handleAddRun={handleAddRun}
 							/>
         <EndMatch
-        
+        openModal={openModal}
+        handleCloseModal={handleCloseModal}
+        runningMatchData={runningMatchData}
+        handleMatchEnd={handleMatchEnd}
 							/>
 
         <ChangeInning
+         openModal={openModal}
+         handleCloseModal={handleCloseModal}
+         currentInningOvers={currentInningOvers}
+         currentInning={currentInning}
+         runningMatchData={runningMatchData}
+         handleChangeInning={handleChangeInning}
 							/>
 					<Out
+           openModal={openModal}
+           handleCloseModal={handleCloseModal}
+           runningMatchData={runningMatchData}
+           currentInningOvers={currentInningOvers}
+           currentInning={currentInning}
+           handleAddRun={handleAddRun}
           />        
 					<NewBowler
+           openModal={openModal}
+           handleCloseModal={handleCloseModal}
+           runningMatchData={runningMatchData}
+           currentInningOvers={currentInningOvers}
+           setCurrentInning={setCurrentInning}
+           setCurrentInningOvers={setCurrentInningOvers}
+           currentInning={currentInning}
 					/>
           {/* all modals  */}
       </Grid>
